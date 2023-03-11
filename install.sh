@@ -3,7 +3,7 @@ temp_install_path="/home/gloduck/install"
 env_install_path="/usr/local/lib"
 app_install_path="/opt"
 jdk_download_link="https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.0/graalvm-ce-java11-linux-amd64-22.3.0.tar.gz"
-maven_download_link="https://dlcdn.apache.org/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz"
+maven_download_link="https://dlcdn.apache.org/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz"
 
 
 
@@ -51,6 +51,19 @@ echo "移除无人值守更新功能"
 # https://blog.csdn.net/u011198687/article/details/121576591
 sudo apt autoremove -y unattended-upgrades
 
+echo "更新内置的vim编辑器"
+sudo apt remove -y vim-common
+sudo apt install -y vim
+
+
+echo "替换系统输入法为Fcitx"
+# 重启生效，同时需要设置一下fcitx，将安装的输入法移动到最上面
+# 安装后建议打开设置，把 [全局配置]的[切换激活/非激活输入法]改成Lshift
+sudo apt-get install -y fcitx-googlepinyin
+im-config -n fcitx
+sudo apt autoremove -y ibus*
+sudo apt purge -y ibus*
+
 
 # 安装JDK
 echo "开始安装JDK"
@@ -86,16 +99,23 @@ sudo sed -i '$a export MAVEN_HOME='"${maven_path}"'' /etc/profile
 sudo sed -i '$a export PATH=$PATH:$MAVEN_HOME/bin' /etc/profile
 
 
-
-
- # 安装Idea
- echo "开始安装Idea"
- wget -O idea.tar.gz https://download.jetbrains.com/idea/ideaIU-2021.3.3.tar.gz
- mkdir idea
- tar -xvf idea.tar.gz -C idea
- idea_path=${app_install_path}/idea
- sudo mkdir ${idea_path}
- sudo mv ./idea/idea-*/* ${idea_path}
+# 安装Idea
+echo "开始安装Idea"
+# 激活插件：https://plugins.zhile.io/files/ide-eval-resetter-2.1.6.zip
+wget -O idea.tar.gz https://download.jetbrains.com.cn/idea/ideaIU-2021.2.1.tar.gz
+mkdir idea
+tar -xvf idea.tar.gz -C idea
+idea_path=${app_install_path}/idea
+sudo mkdir ${idea_path}
+sudo mv ./idea/idea-*/* ${idea_path}
+# 替换idea自带的jbr，解决光标不跟随的问题
+# https://github.com/RikudouPatrickstar/JetBrainsRuntime-for-Linux-x64
+sudo rm -R "${idea_path}"/jbr/*
+wget -O jbr.zip https://github.com/RikudouPatrickstar/JetBrainsRuntime-for-Linux-x64/releases/download/202110301849/jbr-linux-x64-202110301849.zip
+mkdir jbr
+unzip -n ./jbr.zip -d ./jbr
+jbr_unzip_path=$(dirname "$(find ./jbr -name "release")")
+sudo mv "${jbr_unzip_path}"/* "${idea_path}"/jbr
 # 写入图标文件
 cat>application/idea.desktop<<EOF
 [Desktop Entry]
@@ -110,6 +130,42 @@ Type=Application
 Categories=Application;Development;
 EOF
 
+
+# 安装windterm
+echo "开始安装WindTerm"
+wget -O windterm.tar.gz https://github.com/kingToolbox/WindTerm/releases/download/2.5.0/WindTerm_2.5.0_Linux_Portable_x86_64.tar.gz
+mkdir windterm
+tar -xvf windterm.tar.gz -C windterm
+windterm_unzip_path=$(dirname "$(find ./windterm -name "windterm.desktop")")
+windterm_path=${app_install_path}/windterm
+sudo mkdir -p ${windterm_path}
+sudo mv "${windterm_unzip_path}"/* ${windterm_path}
+sudo chmod a+x ${app_install_path}/windterm/WindTerm
+# 写入图标文件
+touch application/windterm.desktop
+cat>application/windterm.desktop<<EOF
+[Desktop Entry]
+Name=WindTerm
+Comment=A professional cross-platform SSH/Sftp/Shell/Telnet/Serial terminal
+GenericName=Connect Client
+Exec=${app_install_path}/windterm/WindTerm
+Type=Application
+Icon=${app_install_path}/windterm/windterm.png
+StartupNotify=true
+StartupWMClass=Code
+Categories=Application;Development
+Keywords=windterm
+Terminal=false
+EOF
+
+
+# 安装Jprofiler
+# 注册码：
+#L-J12-STALKER#5846458-y8bdm6q8gtr7b#228a
+#L-J12-STALKER#8338547-qywh5933xu2r3#a4a4
+echo "安装Jprofiler：https://www.ej-technologies.com/download"
+wget -O jprofiler.deb https://download.ej-technologies.com/jprofiler/jprofiler_linux_12_0_4.deb
+sudo apt install -y ./jprofiler.deb
 
 
 # 安装破解版Dbeaver，必须优先安装JDK
@@ -192,6 +248,13 @@ Type=Application
 Categories=Application;Development;
 EOF
 
+
+# 安装ApiFox
+echo "安装ApiFox：https://www.apifox.cn/"
+wget -O apifox.zip https://cdn.apifox.cn/download/Apifox-linux-deb-latest.zip
+mkdir apifox
+unzip -n ./apifox.zip -d ./apifox
+sudo apt install -y ./apifox/apifox_*.deb
 
 
 # 安装Qv2ray
@@ -302,10 +365,24 @@ echo "安装破解版Typora"
 # sudo apt-get update
 # sudo apt-get install typora
 # 破解版安装命令（输入任意邮箱和序列号即可激活）
+# 如需要其他版本，可以去仓库：https://github.com/Gloduck/ubuntu_install/tree/main/source/typora
 wget -O typora.deb https://raw.githubusercontent.com/Gloduck/ubuntu_install/main/source/typora/typora_lastest_amd64.deb
 sudo apt install -y ./typora.deb
 
 
+
+# 安装Utools
+echo "安装Utools"
+wget -d --header="User-Agent: Mozilla/5.0 (Windows NT 6.0) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.97 Safari/537.11" -O utools.deb https://res.u-tools.cn/version2/utools_3.3.0_amd64.deb
+sudo apt install -y ./utools.deb
+# 如果是ubuntu22.04，则需要额外的操作
+wget -O openssl.pkg.tar.zst https://archlinux.org/packages/core/x86_64/openssl-1.1/download/
+tar xvf openssl.pkg.tar.zst
+sudo cp usr/lib/libcrypto.so.1.1 /opt/uTools/
+# 加入开启自启
+mkdir -p ~/.config/autostart
+touch ~/.config/autostart/utools.desktop
+cat /usr/share/applications/utools.desktop >> ~/.config/autostart/utools.desktop
 
 
 # 卸载内置的firefox并且安装谷歌浏览器
@@ -315,19 +392,68 @@ wget -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_curre
 sudo apt install -y ./chrome.deb
 
 
+# 安装QQ
+echo "安装Linux原生QQ"
+wget -O qq.deb https://dldir1.qq.com/qqfile/qq/QQNT/4b2e3220/linuxqq_3.1.0-9572_amd64.deb
+sudo apt install -y ./qq.deb
+
+# 安装微信
+echo "安装Linux原生微信"
+wget -O wechat.deb https://archive.ubuntukylin.com/software/pool/partner/weixin_2.1.4_amd64.deb
+sudo apt install -y ./wechat.deb
+
+# 安装优麒麟版企业微信
+echo "安装优麒麟版企业微信"
+wget -O ukylin-wine.deb http://archive.ubuntukylin.com/software/pool/partner/ukylin-wine_70.6.3.25_amd64.deb
+wget -O wxwork.deb http://archive.ubuntukylin.com/software/pool/partner/ukylin-wxwork_1.0_amd64.deb
+sudo apt install -f -y ./ukylin-wine.deb
+sudo apt install -f -y ./wxwork.deb
+
+
+# 安装洛雪音乐播放器
+echo "安装洛雪音乐播放器"
+# Git地址：https://github.com/lyswhut/lx-music-desktop
+wget -O lx-music.deb https://github.com/lyswhut/lx-music-desktop/releases/download/v2.1.2/lx-music-desktop-v2.1.2-x64.deb
+sudo apt install -y ./lx-music.deb
+
+# 安装vlc播放器
+sudo apt install -y vlc
+
+# 安装星火商店
+echo "安装星火商店"
+wget -O spark.deb https://gitee.com/deepin-community-store/spark-store/releases/download/4.2.3test4/spark-store_4.2.3~test4_amd64.deb
+sudo apt install -y ./spark.deb
+
+# 安装腾讯会议
+#https://zhuanlan.zhihu.com/p/546516064
+#wget -O tencent-metting.deb https://updatecdn.meeting.qq.com/cos/e078bf97365540d9f0ff063f93372a9c/TencentMeeting_0300000000_3.12.0.400_x86_64_default.publish.deb
+#sudo apt install -y ./tencent-metting.deb
+
+
+# 安装Crossover
+# echo "安装Crossover22"
+# wget -O crossover.deb https://cpv2.mairuan.com/crossoverchina.com/trial/Linux/crossover-22.deb
+# sudo apt install -y ./crossover.deb
+
 
 
 # 安装一些常用的Win软件
 # 导入Deepin移植仓库
 # wget -O- https://deepin-wine.i-m.dev/setup.sh | sh
 
+# 安装wine运行器
+# https://gitee.com/gfdgd-xi/deep-wine-runner/
+# wget -O wine-runner.deb https://gitee.com/gfdgd-xi/deep-wine-runner/releases/download/2.4.1/spark-deepin-wine-runner_2.4.1_all.deb
+# sudo apt install -y ./wine-runner.deb
+# 下载常用wine软件
+# 企业微信：wget -O wx.exe https://dldir1.qq.com/wework/work_weixin/WeCom_3.1.6.3605.exe
+# qq轻聊版：wget http://dldir1.qq.com/qqfile/qq/QQ7.9Light/14308/QQ7.9Light.exe 
 
 
-# 安装星火商店
-echo "安装星火商店"
-wget -O spark.deb https://gitee.com/deepin-community-store/spark-store/releases/download/txz/spark-store_3.3.3~test4_amd64.deb
-sudo apt install -y ./spark.deb
 
+
+# 优麒麟软件
+# https://archive.ubuntukylin.com/software/pool/partner/
 
 
 # 修改系统时间，防止双系统下时间不正确
@@ -350,7 +476,5 @@ sudo rm -R ${temp_install_path}
 
 
 
-
 # 清屏，并且显示提示内容
 # clear
-
